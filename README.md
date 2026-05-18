@@ -1,37 +1,57 @@
 # Easy Desktop Pet
 
-透明桌面宠物，支持导入透明 `GIF / APNG / WebM` 素材，在桌面上常驻播放，并附带一个和宠物联动的简易番茄时钟。
+一个基于 `Vue 3 + Tauri 2` 的透明桌宠项目。  
+当前版本支持导入透明 `GIF / APNG / WebM` 素材，把宠物常驻显示在桌面上，并提供一个和宠物联动的简洁监督任务倒计时。
 
-Transparent desktop pet built with `Vue 3 + Tauri 2`. It plays transparent `GIF / APNG / WebM` assets on the desktop and includes a pomodoro timer that can switch pet actions by stage.
+A transparent desktop pet built with `Vue 3 + Tauri 2`.  
+It supports transparent `GIF / APNG / WebM` assets, keeps the pet floating on the desktop, and includes a lightweight task supervision countdown.
 
-## Features
+## 当前功能
 
 - 透明桌宠窗口：无边框、透明背景、始终置顶、跳过任务栏
-- 双窗口结构：`pet` 运行窗口 + `settings` 设置窗口
-- 素材导入：支持导入透明 `GIF / APNG / WebM`
-- 动作映射：一个动作可绑定多个动画，随机播放
-- 默认猫咪：仓库内置一个透明猫咪待机动画
-- 番茄时钟：专注 / 短休 / 长休阶段驱动宠物动作切换
-- 系统托盘：显示隐藏、打开设置、番茄控制、更新检查、退出
-- 开机启动：基于 Tauri autostart 插件
-- 自动更新预留：基于 GitHub Releases + updater
+- 透明区域穿透，仅宠物和交互控件可点击
+- 鼠标左键拖拽宠物移动窗口位置，并自动记忆
+- 右键打开桌宠动作菜单
+- 设置窗口支持：
+  - 默认动作
+  - 缩放比例
+  - 开机启动
+  - 自定义动作
+  - 动作与素材映射
+  - 素材导入与素材库查看
+- 托盘支持：
+  - 显示/隐藏宠物
+  - 打开设置
+  - 开始/暂停/重置监督任务
+  - 切换开机启动
+  - 检查更新
+  - 退出
+- 内置一套默认猫咪素材与应用图标
 
-## Media Support
+## 媒体支持
 
-首版不支持普通视频自动去背景，也不做绿幕抠像。
-
-Supported:
+支持：
 
 - `GIF`
 - `APNG`
-- transparent `WebM` as enhanced support
+- 透明 `WebM`
 
-Notes:
+说明：
 
-- `GIF / APNG` 是跨平台保底方案
-- 透明 `WebM` 依赖平台 WebView 能力，不同系统可能存在兼容差异
+- `GIF / APNG` 是跨平台最稳的方案
+- 透明 `WebM` 依赖系统 WebView 能力，不同平台兼容性可能不同
+- 当前不支持普通视频自动抠像、绿幕抠像或 AI 去背景
 
-## Tech Stack
+## 监督任务
+
+项目当前不是经典三阶段番茄钟，而是更轻量的“监督任务”模式：
+
+- 输入一件要做的事情
+- 输入倒计时分钟数
+- 点击开始后，宠物进入监督动作
+- 倒计时结束后，自动切换到完成动作；若未配置完成动作，则回退默认动作
+
+## 技术栈
 
 - Vue 3
 - TypeScript
@@ -39,14 +59,14 @@ Notes:
 - Element Plus
 - Tauri 2
 
-## Development
+## 本地开发
 
 ```bash
 pnpm install
 pnpm tauri dev
 ```
 
-Useful commands:
+常用命令：
 
 ```bash
 pnpm check
@@ -56,68 +76,114 @@ pnpm build
 cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
-## Project Structure
+## 项目结构
 
 ```text
 src/
   views/
     PetView.vue
     SettingsView.vue
+  components/
   stores/
-    app.ts
   lib/
 src-tauri/
   src/lib.rs
   tauri.conf.json
   capabilities/default.json
+  icons/
 public/assets/
   cat-idle.gif
 ```
 
-## Auto Start
+## 图标
+
+当前项目图标源文件：
+
+```text
+src-tauri/app-icon.svg
+```
+
+生成整套平台图标：
+
+```bash
+pnpm tauri icon src-tauri/app-icon.svg -o src-tauri/icons
+```
+
+## 开机启动
 
 开机启动通过 `@tauri-apps/plugin-autostart` 实现，可在设置页或托盘中切换。
 
-## Auto Update
+## 自动更新
 
-项目已经预留 updater 配置，发布到 GitHub Releases 时需要设置：
+项目已经接入 Tauri updater，但要真正工作还需要两部分：
 
-- `TAURI_SIGNING_PRIVATE_KEY`
-- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
-
-还需要把 `src-tauri/tauri.conf.json` 里的：
+1. 在 `src-tauri/tauri.conf.json` 中填入 updater 公钥：
 
 ```json
 "pubkey": "REPLACE_WITH_TAURI_UPDATER_PUBLIC_KEY"
 ```
 
-替换成你自己的 updater 公钥。
+2. 在 GitHub Actions Secrets 中配置：
 
-## Release
+- `TAURI_SIGNING_PRIVATE_KEY`
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
 
-本地调试打包：
+### pubkey 从哪里来
 
-```bash
-cargo tauri build --debug
-```
+`pubkey` 不是随便写的，它来自你生成 updater 签名密钥对时的公钥。
 
-正式签名发布：
+如果你已经有另一个 Tauri 自动更新项目，并且想复用同一套签名体系：
+
+- 直接取那个项目对应的 updater 公钥
+- 同时把同一套私钥内容放到当前仓库的 `TAURI_SIGNING_PRIVATE_KEY`
+- 私钥密码放到 `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+
+如果你想新生成一套，通常用 Tauri signer 生成密钥对，然后：
+
+- 私钥放 GitHub Secrets
+- 公钥填进 `tauri.conf.json`
+
+注意：公钥必须和发布时实际使用的私钥配套，否则更新检查和安装都会失败。
+
+## 发布
+
+本地打包：
 
 ```bash
 pnpm tauri build
 ```
 
-## CI / CD
+## CI / Release
 
-仓库包含两条工作流：
+项目包含两条 GitHub Actions 工作流：
 
-- `ci.yml`: 安装依赖、类型检查、Lint、单测、前端构建、Rust 检查
-- `release.yml`: 打 tag 或手动触发时构建桌面安装包并上传到 GitHub Releases
+- `ci.yml`
+  - 在推送到 `main` 或 PR 时运行
+  - 执行依赖安装、类型检查、Lint、测试、前端构建、Rust 检查
 
-## Current Notes
+- `release.yml`
+  - 在推送 `v*` tag 或手动触发时运行
+  - 构建 Windows / macOS / Linux 安装包
+  - 上传到 GitHub Releases
+  - 生成 updater 所需发布制品
 
-- Windows 是首要验证平台
-- `cargo tauri build --debug` 已可生成安装包
-- 若未配置签名私钥，updater 制品不会完成签名
-- 当前 `eslint` 仍保留一批 Vue 模板格式 warning，不影响构建和测试
+### 为什么没看到 release
 
+只有满足下面条件时才会生成 Release：
+
+- 已推送 `v*` tag，例如 `v0.1.0`
+- `release.yml` 跑成功
+- 仓库 Secrets 中的签名私钥配置正确
+
+如果 tag 已推上去但 Release 还没出现，通常是：
+
+- 工作流还在跑
+- 工作流失败
+- updater 签名相关 Secrets 没配
+
+## 当前状态
+
+- 当前主分支已经存在首个提交
+- 已推送 `v0.1.0` tag
+- Release 工作流已被触发
+- Windows 是当前主要验收平台
