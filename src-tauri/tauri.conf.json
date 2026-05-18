@@ -17,7 +17,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "REPLACE_WITH_TAURI_UPDATER_PUBLIC_KEY",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDM4QjBCRTcyRjQ1MTQ1RkIKUldUN1JWSDBjcjZ3T0xhK0tPaFRlcFJDdEMxUGFkWUJyM0p0Z2hwbzJRYms2M29XcDRqMkNGdFgK",
       "endpoints": [
         "https://github.com/NotFaceGUI/easy-desktop-pet/releases/latest/download/latest.json"
       ],
