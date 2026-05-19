@@ -13,7 +13,7 @@ import {
   getTodoCompletedAction,
   getTodoRunningAction,
 } from "../lib/todoTimer";
-import { resolveActionAsset } from "../lib/pet";
+import { hasActionAssets, resolveActionAsset, resolveRenderableActionId } from "../lib/pet";
 
 interface AppState {
   ready: boolean;
@@ -39,7 +39,9 @@ export const useAppStore = defineStore("app", {
   }),
   getters: {
     quickActions(state): PetAction[] {
-      return state.config.actions.filter((action) => action.quickAccess);
+      return state.config.actions.filter(
+        (action) => action.quickAccess && hasActionAssets(state.config, action.id),
+      );
     },
     formattedTodoTimer(state): string {
       return formatSeconds(state.todoTimer.remainingSeconds);
@@ -60,8 +62,11 @@ export const useAppStore = defineStore("app", {
         this.config = structuredClone(DEFAULT_CONFIG);
       }
 
-      this.activeActionId =
-        this.config.settings.lastActionId || this.config.settings.defaultActionId;
+      this.activeActionId = resolveRenderableActionId(
+        this.config,
+        this.config.settings.lastActionId || this.config.settings.defaultActionId,
+      );
+      this.config.settings.lastActionId = this.activeActionId;
       this.currentAsset = resolveActionAsset(this.config, this.activeActionId);
       this.todoTimer = getInitialTodoTimerState(this.config.todoTimer);
       this.ready = true;
@@ -92,6 +97,8 @@ export const useAppStore = defineStore("app", {
       if (!this.activeActionId || this.activeActionId === this.config.settings.lastActionId) {
         this.activeActionId = actionId;
       }
+      this.activeActionId = resolveRenderableActionId(this.config, this.activeActionId);
+      this.config.settings.lastActionId = this.activeActionId;
       this.currentAsset = resolveActionAsset(this.config, this.activeActionId);
       await this.persistConfig();
     },
@@ -129,13 +136,16 @@ export const useAppStore = defineStore("app", {
         return;
       }
       action.assetIds = [...assetIds];
+      this.activeActionId = resolveRenderableActionId(this.config, this.activeActionId);
+      this.config.settings.lastActionId = this.activeActionId;
       this.currentAsset = resolveActionAsset(this.config, this.activeActionId);
       await this.persistConfig();
     },
     async setActiveAction(actionId: string) {
-      this.activeActionId = actionId;
-      this.config.settings.lastActionId = actionId;
-      this.currentAsset = resolveActionAsset(this.config, actionId);
+      const nextActionId = resolveRenderableActionId(this.config, actionId);
+      this.activeActionId = nextActionId;
+      this.config.settings.lastActionId = nextActionId;
+      this.currentAsset = resolveActionAsset(this.config, nextActionId);
       await this.persistConfig();
     },
     async setPetPosition(x: number, y: number) {
@@ -144,8 +154,11 @@ export const useAppStore = defineStore("app", {
     },
     async syncConfig(config: AppConfig) {
       this.config = config;
-      this.activeActionId =
-        this.activeActionId || this.config.settings.lastActionId || this.config.settings.defaultActionId;
+      this.activeActionId = resolveRenderableActionId(
+        this.config,
+        this.activeActionId || this.config.settings.lastActionId || this.config.settings.defaultActionId,
+      );
+      this.config.settings.lastActionId = this.activeActionId;
       this.currentAsset = resolveActionAsset(this.config, this.activeActionId);
       if (!this.todoTimer.isRunning) {
         this.todoTimer = getInitialTodoTimerState(this.config.todoTimer);
@@ -189,8 +202,9 @@ export const useAppStore = defineStore("app", {
       this.todoTimer.isRunning = false;
       this.todoTimer.completed = true;
       this.todoTimer.remainingSeconds = 0;
-      const actionId = getTodoCompletedAction(this.config);
+      const actionId = resolveRenderableActionId(this.config, getTodoCompletedAction(this.config));
       this.activeActionId = actionId;
+      this.config.settings.lastActionId = actionId;
       this.currentAsset = resolveActionAsset(this.config, actionId);
       await emitTodoTimerChanged({
         actionId,
@@ -201,7 +215,11 @@ export const useAppStore = defineStore("app", {
     async resetTodoTimer() {
       this.stopTicking();
       this.todoTimer = getInitialTodoTimerState(this.config.todoTimer);
-      this.activeActionId = this.config.settings.defaultActionId;
+      this.activeActionId = resolveRenderableActionId(
+        this.config,
+        this.config.settings.defaultActionId,
+      );
+      this.config.settings.lastActionId = this.activeActionId;
       this.currentAsset = resolveActionAsset(this.config, this.activeActionId);
       await emitTodoTimerChanged({
         actionId: this.activeActionId,

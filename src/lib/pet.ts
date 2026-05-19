@@ -8,18 +8,28 @@ export function getAssetById(config: AppConfig, assetId: string): PetAsset | und
   return config.assets.find((asset) => asset.id === assetId);
 }
 
+export function getActionAssetIds(config: AppConfig, actionId: string): string[] {
+  return getActionById(config, actionId)?.assetIds.filter((id) => getAssetById(config, id)) ?? [];
+}
+
+export function hasActionAssets(config: AppConfig, actionId: string): boolean {
+  return getActionAssetIds(config, actionId).length > 0;
+}
+
+export function resolveRenderableActionId(config: AppConfig, actionId: string): string {
+  const candidates = [actionId, config.settings.defaultActionId, ...config.actions.map((action) => action.id)];
+
+  return candidates.find((candidateId) => Boolean(candidateId) && hasActionAssets(config, candidateId)) ?? actionId;
+}
+
 export function resolveActionAsset(
   config: AppConfig,
   actionId: string,
 ): PetAsset | null {
-  const fallbackAction = getActionById(config, config.settings.defaultActionId);
-  const targetAction =
-    getActionById(config, actionId) ?? fallbackAction ?? config.actions[0];
-
-  const availableIds = targetAction?.assetIds.filter((id) => getAssetById(config, id)) ?? [];
+  const renderableActionId = resolveRenderableActionId(config, actionId);
+  const availableIds = getActionAssetIds(config, renderableActionId);
   if (!availableIds.length) {
-    const fallbackId = fallbackAction?.assetIds.find((id) => getAssetById(config, id));
-    return fallbackId ? getAssetById(config, fallbackId) ?? null : null;
+    return null;
   }
 
   const randomId = availableIds[Math.floor(Math.random() * availableIds.length)];

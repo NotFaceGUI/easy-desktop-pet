@@ -64,6 +64,35 @@ function mergeConfig(partial: Partial<AppConfig> | null | undefined): AppConfig 
   };
 }
 
+async function removeMissingAssets(config: AppConfig): Promise<AppConfig> {
+  const assets = (
+    await Promise.all(
+      config.assets.map(async (asset) => {
+        if (asset.isBundled) {
+          return asset;
+        }
+
+        const hasFile = await exists(asset.localPath, {
+          baseDir: BaseDirectory.AppData,
+        }).catch(() => false);
+
+        return hasFile ? asset : null;
+      }),
+    )
+  ).filter((asset): asset is PetAsset => Boolean(asset));
+
+  const assetIds = new Set(assets.map((asset) => asset.id));
+
+  return {
+    ...config,
+    assets,
+    actions: config.actions.map((action) => ({
+      ...action,
+      assetIds: action.assetIds.filter((assetId) => assetIds.has(assetId)),
+    })),
+  };
+}
+
 export async function ensureConfigReady(): Promise<void> {
   await mkdir(ASSET_DIR, { baseDir: BaseDirectory.AppData, recursive: true });
 }
@@ -80,8 +109,9 @@ export async function loadConfig(): Promise<AppConfig> {
     const raw = await readTextFile(CONFIG_FILE, { baseDir: BaseDirectory.AppConfig });
     const parsed = JSON.parse(raw) as Partial<AppConfig>;
     const merged = mergeConfig(parsed);
-    await saveConfig(merged);
-    return merged;
+    const normalized = await removeMissingAssets(merged);
+    await saveConfig(normalized);
+    return normalized;
   } catch {
     await saveConfig(DEFAULT_CONFIG);
     return structuredClone(DEFAULT_CONFIG);
